@@ -5,7 +5,7 @@ import os
 
 pygame.init()
 
-# Screen
+# Screen settings
 WIDTH, HEIGHT = 800, 500
 BLOCK = 20
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -26,13 +26,17 @@ big_font = pygame.font.SysFont("Segoe UI", 50)
 
 # High score file
 HS_FILE = "highscore.txt"
-if not os.path.exists(HS_FILE):
-    with open(HS_FILE, "w") as f:
-        f.write("0")
 
 def load_high_score():
-    with open(HS_FILE, "r") as f:
-        return int(f.read())
+    try:
+        if not os.path.exists(HS_FILE):
+            with open(HS_FILE, "w") as f:
+                f.write("0")
+        with open(HS_FILE, "r") as f:
+            data = f.read().strip()
+            return int(data) if data else 0
+    except:
+        return 0
 
 def save_high_score(score):
     with open(HS_FILE, "w") as f:
@@ -53,7 +57,7 @@ def draw_grid():
     for y in range(0, HEIGHT, BLOCK):
         pygame.draw.line(screen, GRID, (0, y), (WIDTH, y))
 
-# ---------- MAIN MENU ----------
+# ---------- MENU ----------
 def main_menu():
     while True:
         screen.fill(BG)
@@ -72,7 +76,6 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.collidepoint(event.pos):
                     return game_loop()
-
                 if quit_btn.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
@@ -82,11 +85,13 @@ def game_loop():
     snake = [(WIDTH // 2, HEIGHT // 2)]
     dx, dy = BLOCK, 0
 
-    food = (random.randrange(0, WIDTH, BLOCK),
-            random.randrange(0, HEIGHT, BLOCK))
+    food = (
+        random.randint(0, (WIDTH - BLOCK) // BLOCK) * BLOCK,
+        random.randint(0, (HEIGHT - BLOCK) // BLOCK) * BLOCK
+    )
 
     score = 0
-    speed = 10
+    speed = 4
     paused = False
     high_score = load_high_score()
 
@@ -118,9 +123,10 @@ def game_loop():
             pygame.display.flip()
             continue
 
+        # Move snake
         head = (snake[0][0] + dx, snake[0][1] + dy)
 
-        # Collision
+        # Collision with wall or self
         if (head[0] < 0 or head[0] >= WIDTH or
             head[1] < 0 or head[1] >= HEIGHT or
             head in snake):
@@ -132,17 +138,25 @@ def game_loop():
 
         snake.insert(0, head)
 
-        # Eat food
-        if head == food:
+        # Rect collision detection
+        snake_rect = pygame.Rect(head[0], head[1], BLOCK, BLOCK)
+        food_rect = pygame.Rect(food[0], food[1], BLOCK, BLOCK)
+
+        if snake_rect.colliderect(food_rect):
             score += 1
             speed += 0.4
-            food = (random.randrange(0, WIDTH, BLOCK),
-                    random.randrange(0, HEIGHT, BLOCK))
+
+            food = (
+                random.randint(0, (WIDTH - BLOCK) // BLOCK) * BLOCK,
+                random.randint(0, (HEIGHT - BLOCK) // BLOCK) * BLOCK
+            )
         else:
             snake.pop()
 
+        # Draw food
         pygame.draw.rect(screen, FOOD, (*food, BLOCK, BLOCK), border_radius=6)
 
+        # Draw snake
         for s in snake:
             pygame.draw.rect(screen, SNAKE, (*s, BLOCK, BLOCK), border_radius=6)
 
